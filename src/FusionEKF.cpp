@@ -37,6 +37,34 @@ FusionEKF::FusionEKF() {
     * Set the process and measurement noises
   */
 
+  
+  //Initializing the Laser mesurement matrix
+  H_laser_ << 1,0,0,0,
+    0,1,0,0;
+
+  
+  //Initializing the Jacobian matrix to all 0's
+  Hj_ << 0,0,0,0,
+    0,0,0,0,
+    0,0,0,0;
+
+  
+  //Initializing the State Covariance Matrix - giving high variance to velocity
+  ekf_.P_ =  MatrixXd(4, 4);
+  ekf_.P_ << 1,0,0,0,
+    0,1,0,0,
+    0,0,1000,0,
+    0,0,0,1000;
+
+  
+  //Initializng F matrix with dt = 1
+  ekf_.F_ = MatrixXd(4,4);
+  ekf_.F_ << 1,0,1,0,
+    0,1,0,1,
+    0,0,1,0,
+    0,0,0,1;
+  
+  
 
 }
 
@@ -63,16 +91,34 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
     ekf_.x_ = VectorXd(4);
     ekf_.x_ << 1, 1, 1, 1;
 
+    //Initial state - velocity is 0.
+    float px; // x -position
+    float py;//y - position
+    
+
     if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
       /**
       Convert radar from polar to cartesian coordinates and initialize state.
       */
+      //Polar to cartesian formula
+      //px = ro * cos(phi)
+      //py = ro * sin(phi)
+      float ro = measurement_pack.raw_measurements_[0];
+      float phi = measurement_pack.raw_measurements_[1];
+      px = ro * cos(phi);
+      py = ro * sin(phi);
+      
     }
     else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
       /**
       Initialize state.
       */
+      px = measurement_pack.raw_measurements_[0];
+      py = measurement_pack.raw_measurements_[1];
     }
+
+    // Velocity components are 0, since it is initial state. Only position is known. 
+    ekf_.x_ << px,py,0,0;
 
     // done initializing, no need to predict or update
     is_initialized_ = true;
@@ -91,6 +137,7 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
      * Use noise_ax = 9 and noise_ay = 9 for your Q matrix.
    */
 
+  
   ekf_.Predict();
 
   /*****************************************************************************
